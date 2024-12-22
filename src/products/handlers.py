@@ -2,7 +2,7 @@ import os
 import uuid
 
 from fastapi import APIRouter, Form, UploadFile
-from fastapi.params import Depends, File
+from fastapi.params import Depends, File, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_session
@@ -14,14 +14,11 @@ from products.queries import (
     orm_get_all_products,
     orm_get_product_by_id,
     orm_delete_product,
+    orm_update_product,
 )
 
-from products.schemas import (
-    ProductResponse,
-    ListProductResponse,
-    ListCategoryResponse,
-    CategoryResponse,
-)
+from products.schemas import ProductUpdate
+
 
 router = APIRouter(tags=["products"])
 
@@ -57,7 +54,16 @@ async def add_new_product(
     return new_product
 
 
-@router.get("/{product.id}", response_model=ProductResponse)
+@router.patch("/{product.id}")
+async def update_product(
+    product_id: int,
+    data_to_update: ProductUpdate = Body(...),
+    session: AsyncSession = Depends(get_session),
+):
+    return await orm_update_product(session, product_id, data_to_update)
+
+
+@router.get("/{product.id}")
 async def get_product_by_id(
     product_id: int, session: AsyncSession = Depends(get_session)
 ):
@@ -65,7 +71,7 @@ async def get_product_by_id(
     return product
 
 
-@router.get("/{category.name}", response_model=ListProductResponse)
+@router.get("/{category.name}")
 async def get_products_by_category(
     category_id: int, session: AsyncSession = Depends(get_session)
 ):
@@ -73,7 +79,7 @@ async def get_products_by_category(
     return {"products": products}
 
 
-@router.get("/all-products", response_model=ListProductResponse)
+@router.get("/all-products")
 async def get_all_products(session: AsyncSession = Depends(get_session)):
     products = await orm_get_all_products(session)
     return {"products": products}
@@ -92,7 +98,7 @@ async def add_new_category(
     return new_category
 
 
-@router.get("/all-categories", response_model=ListCategoryResponse)
+@router.get("/all-categories")
 async def get_categories(session: AsyncSession = Depends(get_session)):
     categories = await orm_get_categories(session)
     return {"categories": categories}
