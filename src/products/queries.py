@@ -42,8 +42,14 @@ async def orm_get_all_products(session: AsyncSession):
     return products.scalars().all()
 
 
-async def orm_update_product(session: AsyncSession, product_id: int):
-    pass
+async def orm_update_product(session: AsyncSession, product_id: int, data_to_update):
+    product = await orm_get_product_by_id(session, product_id)
+    for key, value in data_to_update.model_dump(exclude_unset=True).items():
+        setattr(product, key, value)
+
+    await session.commit()
+    await session.refresh(product)
+    return product
 
 
 async def orm_delete_product(session: AsyncSession, product_id: int):
