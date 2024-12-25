@@ -9,3 +9,13 @@ class UserCreateSchema(BaseModel):
     email: EmailStr
     first_name: Optional[str]
     last_name: Optional[str]
+
+
+class UserUpdateSchema(BaseModel):
+    first_name: Optional[str]
+    last_name: Optional[str]
+
+
+class UserAuthSchema(BaseModel):
+    username: str
+    password: str
