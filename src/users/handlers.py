@@ -12,8 +12,8 @@ from users.queries import (
 )
 from database import get_session
 
-from users.auth import authenticate_user
-from users.token import create_access_token, get_current_user
+from security.auth import authenticate_user
+from security.token import create_access_token, get_current_user
 
 from users.models import User
 

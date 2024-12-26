@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from users.schemas import UserCreateSchema, UserUpdateSchema
 from users.models import User
-from users.password import get_password_hash
+from security.password import get_password_hash
 
 
 async def orm_add_new_user(user_data: UserCreateSchema, session: AsyncSession):

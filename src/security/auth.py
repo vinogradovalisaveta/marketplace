@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from users.queries import orm_get_user_by_username
 
-from users.password import verify_password
+from security.password import verify_password
 
 
 async def authenticate_user(username: str, password: str, session: AsyncSession):
