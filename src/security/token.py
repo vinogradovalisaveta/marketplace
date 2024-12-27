@@ -1,15 +1,20 @@
+from uuid import uuid4
+
 from fastapi import Request, HTTPException, status, Depends
 from datetime import datetime, timezone, timedelta
 
 from jose import jwt, JWTError
 
 from config import SECRET_KEY, ALGORITHM
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_session
 from users.queries import orm_get_user_by_id
+from security.models import RefreshToken
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 
 def get_auth_data():
@@ -25,6 +30,35 @@ def create_access_token(data: dict) -> str:
         to_encode, auth_data["secret_key"], algorithm=auth_data["algorithm"]
     )
     return encode_jwt
+
+
+async def create_refresh_token(user_id: int, session: AsyncSession) -> str:
+    refresh_token = uuid4()
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    new_refresh_token = RefreshToken(
+        token=refresh_token, user_id=user_id, expires_at=expire
+    )
+    session.add(new_refresh_token)
+    await session.commit()
+    return str(refresh_token)
+
+
+async def get_refresh_token_from_db(token: str, session: AsyncSession) -> RefreshToken:
+    token_object = await session.get(RefreshToken, token)
+    return token_object
+
+
+async def delete_refresh_token_from_db(user_id: str, session: AsyncSession) -> None:
+    query = select(RefreshToken).where(RefreshToken.user_id == user_id)
+    result = await session.execute(query)
+    token_object = result.scalar_one_or_none()
+    if token_object:
+        await session.delete(token_object)
+        await session.commit()
+    # token_object = await session.get(RefreshToken, str(user_id))
+    # if token_object:
+    #     await session.delete(token_object)
+    #     await session.commit()
 
 
 def get_token(request: Request):

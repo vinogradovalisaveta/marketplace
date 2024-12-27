@@ -1,7 +1,19 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, HTTPException, status, Response
 from fastapi.params import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from database import get_session
+from security.auth import authenticate_user
+from security.token import (
+    create_access_token,
+    get_current_user,
+    create_refresh_token,
+    get_refresh_token_from_db,
+    delete_refresh_token_from_db,
+)
+from users.models import User
 from users.schemas import UserCreateSchema, UserUpdateSchema, UserAuthSchema
 from users.queries import (
     orm_add_new_user,
@@ -10,20 +22,23 @@ from users.queries import (
     orm_update_user,
     orm_delete_user,
 )
-from database import get_session
 
-from security.auth import authenticate_user
-from security.token import create_access_token, get_current_user
-
-from users.models import User
 
 router = APIRouter(prefix="/auth", tags=["users"])
 
 
 @router.post("/logout")
-async def logout_user(response: Response):
-    response.delete_cookie(key="user_access_token")
-    return {"message": "you have been successfully logged out"}
+async def logout_user(
+    response: Response,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    if user:
+        await delete_refresh_token_from_db(user.id, session)
+
+        response.delete_cookie(key="user_access_token")
+        response.delete_cookie(key="user_refresh_token")
+        return {"message": "you have been successfully logged out"}
 
 
 @router.get("/me")
@@ -81,5 +96,42 @@ async def auth_user(
         )
 
     access_token = create_access_token({"sub": str(check.id)})
+    refresh_token = await create_refresh_token(check.id, session)
     response.set_cookie(key="user_access_token", value=access_token, httponly=True)
-    return {"access_token": access_token, "refresh_token": None}
+    response.set_cookie(key="user_refresh_token", value=refresh_token, httponly=True)
+    return {"access_token": access_token, "refresh_token": refresh_token}
+
+
+@router.post("/token")
+async def refresh_tokens(
+    response: Response, refresh_token: str, session: AsyncSession = Depends(get_session)
+):
+    refresh_token_from_db = await get_refresh_token_from_db(refresh_token, session)
+
+    if not refresh_token_from_db:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid refresh token"
+        )
+
+    if refresh_token_from_db.expires_at < datetime.now(timezone.utc):
+        await delete_refresh_token_from_db(refresh_token, session)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="refresh token expired"
+        )
+
+    user = await session.get(User, refresh_token_from_db.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="user not found"
+        )
+
+    access_token = create_access_token({"sub": str(user.id)})
+    new_refresh_token = await create_refresh_token(user.id, session)
+
+    await delete_refresh_token_from_db(user.id, session)
+
+    response.set_cookie(key="user_access_token", value=access_token, httponly=True)
+    response.set_cookie(
+        key="user_refresh_token", value=new_refresh_token, httponly=True
+    )
+    return {"access_token": access_token, "refresh_token": refresh_token}
