@@ -5,9 +5,11 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from src.products import models
-from src.users import models
-from src.security import models
+from cart import models
+from products import models
+from security import models
+from users import models
+
 from src.database import DATABASE_URL, Base
 
 # this is the Alembic Config object, which provides
