@@ -1,22 +1,21 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.cart.models import Cart, CartItem
-from src.users.models import User
+from cart.models import Cart, CartItem
 
 
-async def orm_get_cart(session: AsyncSession, user: User):
-    query = select(Cart).where(Cart.user_id == user.id)
+async def orm_get_cart(session: AsyncSession, user_id: int):
+    query = select(Cart).where(Cart.user_id == user_id)
     result = await session.execute(query)
-    return result.scalar_one()
+    return result.scalar_one_or_none()
 
 
 async def orm_add_product_to_cart(
-    session: AsyncSession, user: User, product_id: int, quantity: int = 1
+    session: AsyncSession, user_id: int, product_id: int, quantity: int = 1
 ):
-    cart = await orm_get_cart(session, user)
+    cart = await orm_get_cart(session, user_id)
     if not cart:
-        cart = Cart(user_id=user.id)
+        cart = Cart(user_id=user_id)
         session.add(cart)
         await session.commit()
         await session.refresh(cart)

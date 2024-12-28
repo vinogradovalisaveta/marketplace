@@ -1,9 +1,12 @@
 from fastapi import FastAPI
 
-from products.handlers import router as products_router
-from users.handlers import router as users_router
+from cart.handlers import router as cart_router
+from products.handlers import router as product_router
+from users.handlers import router as user_router
+
 
 app = FastAPI()
 
-app.include_router(products_router)
-app.include_router(users_router)
+app.include_router(cart_router)
+app.include_router(product_router)
+app.include_router(user_router)
