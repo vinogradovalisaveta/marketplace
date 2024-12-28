@@ -16,7 +16,7 @@ class Cart(Base):
         Integer, ForeignKey("users.id"), nullable=False, unique=True
     )
     created_at: Mapped[DateTime] = mapped_column(
-        DateTime, default=datetime.now(timezone.utc)
+        DateTime(timezone=True), default=datetime.now(timezone.utc)
     )
 
     user: Mapped["User"] = relationship(back_populates="cart")

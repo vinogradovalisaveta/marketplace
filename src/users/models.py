@@ -1,5 +1,7 @@
+from typing import Optional
+
 from sqlalchemy import Integer, String, Boolean, DateTime, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
 
@@ -17,4 +19,8 @@ class User(Base):
     created_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(
         DateTime, default=func.now(), onupdate=func.now()
+    )
+
+    cart: Mapped[Optional["Cart"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
     )
