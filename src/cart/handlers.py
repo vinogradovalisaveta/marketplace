@@ -13,6 +13,8 @@ from users.models import User
 
 from cart.queries import ProductNotFound, InsufficientStock
 
+from exceptions import CartNotFound, CartItemNotFound
+
 router = APIRouter(prefix="/cart", tags=["cart"])
 
 
@@ -71,13 +73,24 @@ async def update_product_quantity_in_cart(
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    cart = await orm_update_product_quantity_in_cart(
-        session, user.id, product_id, quantity
-    )
-
-    if not cart:
+    try:
+        cart = await orm_update_product_quantity_in_cart(
+            session, user.id, product_id, quantity
+        )
+        return cart
+    except InsufficientStock as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    except ProductNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="product not found"
+        )
+    except CartNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="cart not found"
+        )
+    except CartItemNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="cart item not found"
         )
 
     return cart

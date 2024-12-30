@@ -6,6 +6,10 @@ from products.queries import orm_get_product_by_id
 
 from exceptions import ProductNotFound, InsufficientStock
 
+from exceptions import CartNotFound, CartItemNotFound
+
+from products.models import Product
+
 
 async def orm_get_cart(session: AsyncSession, user_id: int):
     query = select(Cart).where(Cart.user_id == user_id)
@@ -103,20 +107,25 @@ async def orm_update_product_quantity_in_cart(
     session: AsyncSession, user_id: int, product_id: int, quantity: int = 1
 ):
     cart = await orm_get_cart(session, user_id)
-
     if not cart:
-        return None
+        raise CartNotFound()
 
     query = select(CartItem).where(
         CartItem.cart_id == cart.id, CartItem.product_id == product_id
     )
     result = await session.execute(query)
     cart_item = result.scalar_one_or_none()
-
     if not cart_item:
-        return None
+        raise CartItemNotFound()
+
+    product = await session.get(Product, product_id)
+    if not product:
+        raise ProductNotFound()
+    if product.stock < quantity:
+        raise InsufficientStock(
+            message=f"not enough stock for {product.name}. available: {product.stock}"
+        )
 
     cart_item.quantity = quantity
     await session.commit()
-
     return cart
