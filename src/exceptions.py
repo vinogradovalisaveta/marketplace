@@ -13,3 +13,7 @@ class CartNotFound(Exception):
 
 class CartItemNotFound(Exception):
     pass
+
+
+class UserNotFound(Exception):
+    pass

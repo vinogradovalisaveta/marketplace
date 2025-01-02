@@ -33,6 +33,14 @@ def create_access_token(data: dict) -> str:
 
 
 async def create_refresh_token(user_id: int, session: AsyncSession) -> str:
+    query = select(RefreshToken).where(RefreshToken.user_id == user_id)
+    result = await session.execute(query)
+    old_token = result.scalar_one_or_none()
+
+    if old_token:
+        await session.delete(old_token)
+        await session.commit()
+
     refresh_token = uuid4()
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     new_refresh_token = RefreshToken(
@@ -51,10 +59,10 @@ async def get_refresh_token_from_db(token: str, session: AsyncSession) -> Refres
 async def delete_refresh_token_from_db(user_id: str, session: AsyncSession) -> None:
     query = select(RefreshToken).where(RefreshToken.user_id == user_id)
     result = await session.execute(query)
-    token_object = result.scalar_one_or_none()
-    if token_object:
+    token_objects = result.scalars().all()
+    for token_object in token_objects:
         await session.delete(token_object)
-        await session.commit()
+    await session.commit()
     # token_object = await session.get(RefreshToken, str(user_id))
     # if token_object:
     #     await session.delete(token_object)
