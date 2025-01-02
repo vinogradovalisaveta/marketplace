@@ -22,14 +22,13 @@ router = APIRouter(prefix="/cart", tags=["cart"])
 async def get_cart(
     session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)
 ):
-    cart = await orm_get_cart(session, user.id)
-
-    if not cart:
+    try:
+        cart = await orm_get_cart(session, user.id)
+        return cart
+    except CartNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="cart not found"
         )
-
-    return cart
 
 
 @router.post("/add-product")
@@ -56,14 +55,13 @@ async def delete_product_from_cart(
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    cart = await orm_delete_product_from_cart(session, user.id, product_id)
-
-    if not cart:
+    try:
+        cart = await orm_delete_product_from_cart(session, user.id, product_id)
+        return cart
+    except CartItemNotFound:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="cart not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="cart item not found"
         )
-
-    return cart
 
 
 @router.post("/update-quantity")
@@ -92,5 +90,3 @@ async def update_product_quantity_in_cart(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="cart item not found"
         )
-
-    return cart

@@ -15,9 +15,8 @@ async def orm_get_cart(session: AsyncSession, user_id: int):
     query = select(Cart).where(Cart.user_id == user_id)
     result = await session.execute(query)
     cart = result.scalar_one_or_none()
-
     if not cart:
-        return None
+        raise CartNotFound()
 
     # query = select(CartItem).where(CartItem.cart_id == cart.id)
     # result = await session.execute(query)
@@ -51,16 +50,16 @@ async def orm_add_product_to_cart(
     product = await orm_get_product_by_id(session, product_id)
 
     if not product:
-        raise ProductNotFound
+        raise ProductNotFound()
 
     if product.stock < quantity:
         raise InsufficientStock(
             message=f"not enough stock for {product.name}. available: {product.stock}"
         )
 
-    cart = await orm_get_cart(session, user_id)
-
-    if not cart:
+    try:
+        cart = await orm_get_cart(session, user_id)
+    except CartNotFound:
         cart = Cart(user_id=user_id)
         session.add(cart)
         await session.commit()
@@ -88,7 +87,7 @@ async def orm_delete_product_from_cart(
     cart = await orm_get_cart(session, user_id)
 
     if not cart:
-        return None
+        raise CartNotFound()
 
     query = select(CartItem).where(
         CartItem.cart_id == cart.id, CartItem.product_id == product_id
@@ -96,9 +95,11 @@ async def orm_delete_product_from_cart(
     result = await session.execute(query)
     cart_item = result.scalar_one_or_none()
 
-    if cart_item:
-        await session.delete(cart_item)
-        await session.commit()
+    if not cart_item:
+        raise CartItemNotFound()
+
+    await session.delete(cart_item)
+    await session.commit()
 
     return cart
 
