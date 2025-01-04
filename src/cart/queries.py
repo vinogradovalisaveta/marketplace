@@ -2,17 +2,39 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cart.models import Cart, CartItem
+from exceptions import (
+    ProductNotFound,
+    InsufficientStock,
+    CartNotFound,
+    CartItemNotFound,
+)
+from products.models import Product
 from products.queries import orm_get_product_by_id
 
-from exceptions import ProductNotFound, InsufficientStock
 
-from exceptions import CartNotFound, CartItemNotFound
-
-from products.models import Product
-
-
-async def orm_get_items_in_cart(session: AsyncSession, user_id: int):
+async def orm_checkout(session: AsyncSession, user_id: int):
     cart = await orm_get_cart(session, user_id)
+    if not cart:
+        raise CartNotFound()
+
+    for item in cart.items:
+        product = await session.get(Product, item["product_id"])
+        if not product:
+            raise ProductNotFound()
+        if product.stock < item["quantity"]:
+            raise InsufficientStock(
+                message=f'not enough stock fot product "{product.name}". available {product.stock}'
+            )
+        product.stock -= item["quantity"]
+
+    await session.delete(cart)
+    await session.commit()
+
+
+async def orm_get_cart(session: AsyncSession, user_id: int):
+    query = select(Cart).where(Cart.user_id == user_id)
+    result = await session.execute(query)
+    cart = result.scalar_one_or_none()
     if not cart:
         raise CartNotFound()
 
@@ -25,22 +47,13 @@ async def orm_get_items_in_cart(session: AsyncSession, user_id: int):
         product_data = await session.get(Product, cart_item.product_id)
         products.append(
             {
-                "product.id": cart_item.product_id,
+                "product_id": cart_item.product_id,
                 "quantity": cart_item.quantity,
                 "name": product_data.name,
                 "price": product_data.price,
             }
         )
-
-    return {"cart_id": cart.id, "user_id": user_id, "items": products}
-
-
-async def orm_get_cart(session: AsyncSession, user_id: int):
-    query = select(Cart).where(Cart.user_id == user_id)
-    result = await session.execute(query)
-    cart = result.scalar_one_or_none()
-    if not cart:
-        raise CartNotFound()
+    cart.items = products
     return cart
 
 

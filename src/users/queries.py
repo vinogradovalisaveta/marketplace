@@ -1,11 +1,10 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from exceptions import UserNotFound
+from security.password import get_password_hash
 from users.schemas import UserCreateSchema, UserUpdateSchema
 from users.models import User
-from security.password import get_password_hash
-
-from exceptions import UserNotFound
 
 
 async def orm_add_new_user(user_data: UserCreateSchema, session: AsyncSession):
