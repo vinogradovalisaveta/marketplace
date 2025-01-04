@@ -5,6 +5,7 @@ from fastapi.params import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_session
+from exceptions import UserNotFound
 from security.auth import authenticate_user
 from security.token import (
     create_access_token,
@@ -23,7 +24,6 @@ from users.queries import (
     orm_delete_user,
 )
 
-from exceptions import UserNotFound
 
 router = APIRouter(prefix="/auth", tags=["users"])
 
