@@ -11,36 +11,37 @@ from exceptions import CartNotFound, CartItemNotFound
 from products.models import Product
 
 
+async def orm_get_items_in_cart(session: AsyncSession, user_id: int):
+    cart = await orm_get_cart(session, user_id)
+    if not cart:
+        raise CartNotFound()
+
+    query = select(CartItem).where(CartItem.cart_id == cart.id)
+    result = await session.execute(query)
+    cart_items = result.scalars().all()
+
+    products = []
+    for cart_item in cart_items:
+        product_data = await session.get(Product, cart_item.product_id)
+        products.append(
+            {
+                "product.id": cart_item.product_id,
+                "quantity": cart_item.quantity,
+                "name": product_data.name,
+                "price": product_data.price,
+            }
+        )
+
+    return {"cart_id": cart.id, "user_id": user_id, "items": products}
+
+
 async def orm_get_cart(session: AsyncSession, user_id: int):
     query = select(Cart).where(Cart.user_id == user_id)
     result = await session.execute(query)
     cart = result.scalar_one_or_none()
     if not cart:
         raise CartNotFound()
-
-    # query = select(CartItem).where(CartItem.cart_id == cart.id)
-    # result = await session.execute(query)
-    # cart_items = result.scalars().all()
-
     return cart
-
-    # products = []
-    # for item in cart_items:
-    #     product_data = await session.get(Product, item.product_id)
-    #     products.append(
-    #         {
-    #             'product_id': item.product_id,
-    #             'quantity': item.quantity,
-    #             'name': product_data.name,
-    #             'price': product_data.price
-    #         }
-    #     )
-    #
-    #     return {
-    #         'cart_id': cart.id,
-    #         'user_id': cart.user_id,
-    #         'items': products
-    #     }
 
 
 async def orm_add_product_to_cart(
