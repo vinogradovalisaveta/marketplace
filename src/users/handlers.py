@@ -23,6 +23,7 @@ from users.queries import (
     orm_delete_user,
 )
 
+from exceptions import UserNotFound
 
 router = APIRouter(prefix="/auth", tags=["users"])
 
@@ -61,8 +62,13 @@ async def get_all_users(session: AsyncSession = Depends(get_session)):
 
 @router.get("/{user_id}")
 async def get_user_by_id(user_id: int, session: AsyncSession = Depends(get_session)):
-    user = await orm_get_user_by_id(user_id, session)
-    return user
+    try:
+        user = await orm_get_user_by_id(user_id, session)
+        return user
+    except UserNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="user not found"
+        )
 
 
 @router.patch("/{user_id}")

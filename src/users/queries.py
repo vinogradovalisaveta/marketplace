@@ -5,6 +5,8 @@ from users.schemas import UserCreateSchema, UserUpdateSchema
 from users.models import User
 from security.password import get_password_hash
 
+from exceptions import UserNotFound
+
 
 async def orm_add_new_user(user_data: UserCreateSchema, session: AsyncSession):
     new_user = User(**user_data.model_dump())
@@ -26,14 +28,20 @@ async def orm_get_all_users(session: AsyncSession):
 
 async def orm_get_user_by_id(user_id: int, session: AsyncSession):
     query = select(User).where(User.id == user_id)
-    user = await session.execute(query)
-    return user.scalar_one()
+    result = await session.execute(query)
+    user = result.scalar_one_or_none()
+    if not user:
+        raise UserNotFound()
+    return user
 
 
 async def orm_get_user_by_username(username: str, session: AsyncSession):
     query = select(User).where(User.username == username)
-    user = await session.execute(query)
-    return user.scalar_one()
+    result = await session.execute(query)
+    user = result.scalar_one_or_none()
+    if not user:
+        raise UserNotFound()
+    return user
 
 
 async def orm_update_user(

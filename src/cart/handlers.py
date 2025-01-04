@@ -15,7 +15,27 @@ from cart.queries import ProductNotFound, InsufficientStock
 
 from exceptions import CartNotFound, CartItemNotFound
 
+from cart.queries import orm_get_items_in_cart
+from exceptions import UserNotFound
+
 router = APIRouter(prefix="/cart", tags=["cart"])
+
+
+@router.get("/get-cart-items")
+async def get_items_in_cart(
+    session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)
+):
+    try:
+        cart = await orm_get_items_in_cart(session, user.id)
+        return cart
+    except UserNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="user not found"
+        )
+    except CartNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="your cart is empty!"
+        )
 
 
 @router.get("/")
