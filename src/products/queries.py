@@ -1,12 +1,14 @@
 import asyncio
 import os.path
 
-from fastapi import HTTPException
+from fastapi_filter.contrib.sqlalchemy import Filter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from products.models import Product, ProductImage
 from products.models import Category
+
+from products.filters import ProductFilter
 
 
 async def orm_add_product(session: AsyncSession, data: dict, images: list[str]):
@@ -36,10 +38,24 @@ async def orm_get_products_by_category(session: AsyncSession, category_id: int):
     return products.scalars().all()
 
 
-async def orm_get_all_products(session: AsyncSession):
+async def orm_get_all_products(
+    session: AsyncSession,
+    limit: int = 10,
+    offset: int = 0,
+    product_filter: Filter = ProductFilter(),
+):
     query = select(Product)
-    products = await session.execute(query)
-    return products.scalars().all()
+    query = product_filter.filter(query)
+    query = query.limit(limit).offset(offset)
+
+    result = await session.execute(query)
+    products = result.scalars().all()
+
+    count_query = select(Product)
+    count_result = await session.execute(count_query)
+    total = len(count_result.scalars().all())
+
+    return products, total
 
 
 async def orm_update_product(session: AsyncSession, product_id: int, data_to_update):

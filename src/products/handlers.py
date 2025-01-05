@@ -2,7 +2,8 @@ import os
 import uuid
 
 from fastapi import APIRouter, Form, UploadFile
-from fastapi.params import Depends, File, Body
+from fastapi.params import Depends, File, Body, Query
+from fastapi_filter import FilterDepends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_session
@@ -19,6 +20,7 @@ from products.queries import (
 
 from products.schemas import ProductUpdate
 
+from products.filters import ProductFilter
 
 router = APIRouter(tags=["products"])
 
@@ -80,9 +82,14 @@ async def get_products_by_category(
 
 
 @router.get("/all-products")
-async def get_all_products(session: AsyncSession = Depends(get_session)):
-    products = await orm_get_all_products(session)
-    return {"products": products}
+async def get_all_products(
+    session: AsyncSession = Depends(get_session),
+    limit: int = Query(10, description="products per page"),
+    offset: int = Query(0, description="offset (products to skip)"),
+    product_filter: ProductFilter = FilterDepends(ProductFilter),
+):
+    products, total = await orm_get_all_products(session, limit, offset, product_filter)
+    return {"products": products, "total": total, "limit": limit, "offset": offset}
 
 
 @router.delete("/delete-{product.id}")
