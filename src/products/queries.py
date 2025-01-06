@@ -10,10 +10,24 @@ from products.models import Category
 
 from products.filters import ProductFilter
 
+from exceptions import CategoryNotFound
+
+
+async def orm_get_category_by_id(session: AsyncSession, category_id: int):
+    query = select(Category).where(Category.id == category_id)
+    result = await session.execute(query)
+    category = result.scalar_one_or_none()
+    if not category:
+        raise CategoryNotFound()
+    return category
+
 
 async def orm_add_product(session: AsyncSession, data: dict, images: list[str]):
     """добавляет новый объект в бд"""
     new_product = Product(**data)
+    category = await orm_get_category_by_id(session, new_product.category_id)
+    if not category:
+        raise CategoryNotFound()
     session.add(new_product)
     await session.flush()
 
@@ -32,10 +46,29 @@ async def orm_get_product_by_id(session: AsyncSession, product_id: int):
     return product.scalar()
 
 
-async def orm_get_products_by_category(session: AsyncSession, category_id: int):
+async def orm_get_products_by_category(
+    session: AsyncSession,
+    category_id: int,
+    limit: int = 10,
+    offset: int = 0,
+    product_filter: ProductFilter = ProductFilter(),
+):
+    category = await orm_get_category_by_id(session, category_id)
+    if not category:
+        raise CategoryNotFound()
+
     query = select(Product).where(Product.category_id == category_id)
-    products = await session.execute(query)
-    return products.scalars().all()
+    query = product_filter.filter(query)
+    query = query.limit(limit).offset(offset)
+
+    result = await session.execute(query)
+    products = result.scalars().all()
+
+    count_query = select(Product).where(Product.category_id == category_id)
+    count_result = await session.execute(count_query)
+    total = len(count_result.scalars().all())
+
+    return products, total
 
 
 async def orm_get_all_products(
