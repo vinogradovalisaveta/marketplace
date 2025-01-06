@@ -1,3 +1,7 @@
+class CategoryNotFound(Exception):
+    pass
+
+
 class ProductNotFound(Exception):
     pass
 

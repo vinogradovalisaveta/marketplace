@@ -1,7 +1,7 @@
 import os
 import uuid
 
-from fastapi import APIRouter, Form, UploadFile
+from fastapi import APIRouter, Form, UploadFile, HTTPException, status
 from fastapi.params import Depends, File, Body, Query
 from fastapi_filter import FilterDepends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,8 @@ from products.queries import (
 from products.schemas import ProductUpdate
 
 from products.filters import ProductFilter
+
+from exceptions import CategoryNotFound
 
 router = APIRouter(tags=["products"])
 
@@ -52,8 +54,13 @@ async def add_new_product(
             buffer.write(contents)
         image_paths.append(file_path)
 
-    new_product = await orm_add_product(session, data, image_paths)
-    return new_product
+    try:
+        new_product = await orm_add_product(session, data, image_paths)
+        return new_product
+    except CategoryNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="category not found"
+        )
 
 
 @router.patch("/{product.id}")
@@ -75,10 +82,21 @@ async def get_product_by_id(
 
 @router.get("/{category.name}")
 async def get_products_by_category(
-    category_id: int, session: AsyncSession = Depends(get_session)
+    category_id: int,
+    session: AsyncSession = Depends(get_session),
+    limit: int = 10,
+    offset: int = 10,
+    product_filter: ProductFilter = FilterDepends(ProductFilter),
 ):
-    products = await orm_get_products_by_category(session, category_id)
-    return {"products": products}
+    try:
+        products, total = await orm_get_products_by_category(
+            session, category_id, limit, offset, product_filter
+        )
+        return {"products": products}
+    except CategoryNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="category not found"
+        )
 
 
 @router.get("/all-products")
