@@ -7,6 +7,9 @@ from fastapi_filter import FilterDepends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_session
+from exceptions import CategoryNotFound
+from products.filters import ProductFilter
+from products.schemas import ProductUpdate
 from products.queries import (
     orm_add_product,
     orm_add_new_category,
@@ -17,12 +20,8 @@ from products.queries import (
     orm_delete_product,
     orm_update_product,
 )
-
-from products.schemas import ProductUpdate
-
-from products.filters import ProductFilter
-
-from exceptions import CategoryNotFound
+from security.token import get_current_user
+from users.models import User
 
 router = APIRouter(tags=["products"])
 
@@ -36,7 +35,13 @@ async def add_new_product(
     category_id: int = Form(...),
     images: list[UploadFile] = File(...),
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ):
+    if not user.is_seller:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="you are not seller"
+        )
+
     data = {
         "name": name,
         "description": description,
@@ -68,7 +73,13 @@ async def update_product(
     product_id: int,
     data_to_update: ProductUpdate = Body(...),
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ):
+    if not user.is_seller:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="you are not seller"
+        )
+
     return await orm_update_product(session, product_id, data_to_update)
 
 
@@ -111,7 +122,15 @@ async def get_all_products(
 
 
 @router.delete("/delete-{product.id}")
-async def delete_product(product_id: int, session: AsyncSession = Depends(get_session)):
+async def delete_product(
+    product_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    if not user.is_seller:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="you are not seller"
+        )
     return await orm_delete_product(session, product_id)
 
 

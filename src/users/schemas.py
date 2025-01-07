@@ -9,6 +9,7 @@ class UserCreateSchema(BaseModel):
     email: EmailStr
     first_name: Optional[str]
     last_name: Optional[str]
+    is_seller: Optional[bool] = False
 
 
 class UserUpdateSchema(BaseModel):
