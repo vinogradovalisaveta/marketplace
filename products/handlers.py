@@ -7,7 +7,7 @@ from fastapi_filter import FilterDepends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_session
-from exceptions import CategoryNotFound
+from exceptions import CategoryNotFound, ProductNotFound
 from products.filters import ProductFilter
 from products.schemas import ProductUpdate
 from products.queries import (
@@ -80,15 +80,25 @@ async def update_product(
             status_code=status.HTTP_403_FORBIDDEN, detail="you are not seller"
         )
 
-    return await orm_update_product(session, product_id, data_to_update)
+    try:
+        return await orm_update_product(session, product_id, data_to_update)
+    except ProductNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="product not found"
+        )
 
 
 @router.get("/{product.id}")
 async def get_product_by_id(
     product_id: int, session: AsyncSession = Depends(get_session)
 ):
-    product = await orm_get_product_by_id(session, product_id)
-    return product
+    try:
+        product = await orm_get_product_by_id(session, product_id)
+        return product
+    except ProductNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="product not found"
+        )
 
 
 @router.get("/{category.name}")
@@ -131,7 +141,13 @@ async def delete_product(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="you are not seller"
         )
-    return await orm_delete_product(session, product_id)
+
+    try:
+        return await orm_delete_product(session, product_id)
+    except ProductNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="product not found"
+        )
 
 
 @router.post("/add-new-category")

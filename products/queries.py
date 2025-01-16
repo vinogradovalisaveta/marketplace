@@ -10,7 +10,7 @@ from products.models import Category
 
 from products.filters import ProductFilter
 
-from exceptions import CategoryNotFound
+from exceptions import CategoryNotFound, ProductNotFound
 
 
 async def orm_get_category_by_id(session: AsyncSession, category_id: int):
@@ -42,8 +42,11 @@ async def orm_add_product(session: AsyncSession, data: dict, images: list[str]):
 async def orm_get_product_by_id(session: AsyncSession, product_id: int):
     """возвращает товар по его id"""
     query = select(Product).where(Product.id == product_id)
-    product = await session.execute(query)
-    return product.scalar()
+    result = await session.execute(query)
+    product = result.scalar_one_or_none()
+    if not product:
+        raise ProductNotFound()
+    return product
 
 
 async def orm_get_products_by_category(

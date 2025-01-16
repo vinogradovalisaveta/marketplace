@@ -81,7 +81,9 @@ async def update_user(
         user_to_update = await orm_update_user(user_id, user_data, session)
         return user_to_update
     except UserNotFound:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='user not found')
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="user not found"
+        )
 
 
 @router.delete("/{user_id}")
@@ -89,7 +91,9 @@ async def delete_user(user_id: int, session: AsyncSession = Depends(get_session)
     try:
         return await orm_delete_user(user_id, session)
     except UserNotFound:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='user not found')
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="user not found"
+        )
 
 
 @router.post("/login")
