@@ -27,6 +27,10 @@ class Product(Base):
         backref="product", lazy="dynamic", cascade="all, delete-orphan"
     )
 
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="product", cascade="all, delete-orphan"
+    )
+
 
 class ProductImage(Base):
     __tablename__ = "product_images"
