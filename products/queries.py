@@ -1,4 +1,3 @@
-import asyncio
 import os.path
 
 from fastapi_filter.contrib.sqlalchemy import Filter
@@ -106,15 +105,20 @@ async def orm_update_product(session: AsyncSession, product_id: int, data_to_upd
 
 async def orm_delete_product(session: AsyncSession, product_id: int):
     product = await orm_get_product_by_id(session, product_id)
-    # if product:
-    #     for image in product.images:
-    #         file_path = image.image_url
-    #         if os.path.exists(file_path):
-    #             os.remove(file_path)
-    #
-    await session.delete(product)
-    await session.commit()
-    return f'product "{product.name}" was successfully deleted'
+    if not product:
+        raise ProductNotFound()
+
+    else:
+        query = select(ProductImage).where(ProductImage.product_id == product.id)
+        result = await session.execute(query)
+        images = result.scalars().all()
+        for image in images:
+            if os.path.exists(image.image_url):
+                os.remove(image.image_url)
+
+        await session.delete(product)
+        await session.commit()
+        return f'product "{product.name}" was successfully deleted'
 
 
 async def orm_add_new_category(session: AsyncSession, category_name: str):
