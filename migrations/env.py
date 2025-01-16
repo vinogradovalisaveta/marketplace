@@ -11,7 +11,8 @@ from database import DATABASE_URL, Base
 from users import models
 from security import models
 from products import models
-from products import models
+from cart import models
+from comments import models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

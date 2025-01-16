@@ -24,3 +24,7 @@ class User(Base):
     cart: Mapped[Optional["Cart"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
