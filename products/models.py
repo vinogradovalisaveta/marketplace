@@ -3,6 +3,7 @@ from typing import List
 from sqlalchemy import Integer, String, Text, Float, ForeignKey, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from comments.models import Comment
 from database import Base
 
 
